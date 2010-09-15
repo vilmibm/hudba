@@ -3,23 +3,28 @@ fs  = require('fs')
 
 print = (string) -> sys.print string + "\n"
 
-library = '/home/nate/bkp.Music'
+class Library
+    constructor: (path) -> @path = path
 
-scan = (library) ->
-    fs.readdir(library, (err, files) ->
-        for path in files
-            fs.stat(library+'/'+path, is_music_file(library+'/'+path))
-    )
+    is_music_file : (path) ->
+        return (err, stats) =>
+            if stats.isDirectory()
+                @scan(path)
+            else
+                print 'found file: ' + path
+                # execve into tags2json.py
+                # got tags?
+                # mongo logic
+                # push to client
 
-is_music_file = (path) ->
-    return (err, stats) ->
-        if stats.isDirectory()
-            scan(path)
-        else
-            print 'found file: ' + path
-            # execve into tags2json.py
-            # got tags?
-            # mongo logic
-            # push to client
+    scan: (path) ->
+        path ?= @path
+        fs.readdir(path, (err, files) =>
+            for filename in files
+                abspath = path + '/' + filename
+                fs.stat(abspath, @is_music_file(abspath))
+        )
 
-scan(library)
+library = new Library('/home/nate/Music')
+
+library.scan()
