@@ -1,3 +1,7 @@
+# This program is distributed under the terms 
+# of the GNU General Public License
+# Copyright 2010 Nathaniel Smith
+
 sys = require('sys')
 fs  = require('fs')
 
