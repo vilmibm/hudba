@@ -24,9 +24,10 @@ class Library
     scan: (path) ->
         path ?= @path
         fs.readdir(path, (err, files) =>
-            for filename in files
+            files.forEach((filename) =>
                 abspath = path + '/' + filename
                 fs.stat(abspath, @is_music_file(abspath))
+            )
         )
 
 library = new Library('/home/nate/Music')
