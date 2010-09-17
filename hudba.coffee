@@ -4,6 +4,9 @@
 
 sys = require('sys')
 fs  = require('fs')
+spawn = require('child_process').spawn
+
+tags2json = 'python ' + process.cwd() + '/tags2json/tags2json.py'
 
 print = (string) -> sys.print string + "\n"
 

@@ -1,0 +1,3 @@
+[submodule "tags2json"]
+	path = tags2json
+	url = git@github.com:nathanielksmith/tags2json
