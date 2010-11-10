@@ -1,0 +1,230 @@
+<html>
+<head>
+<title>musicd</title>
+<link rel="stylesheet" type="text/css" href="/static/css/music.css" />
+<link rel="stylesheet" type="text/css" href="/static/css/eggplant/jquery-ui-1.8.4.custom.css" />
+<link href='http://fonts.googleapis.com/css?family=Droid+Sans' rel='stylesheet' type='text/css'>
+<script type="text/javascript" src="/static/js/json2.js"></script>
+<script type="text/javascript" src="/static/js/jquery.js"></script>
+<script type="text/javascript" src="/static/js/jquery-ui-1.8.4.custom.min.js"></script>
+</head>
+<body>
+<script type="text/javascript">
+// global
+var sliderTimer;
+
+function play() {
+    clearTimeout(sliderTimer);
+    // controls
+    $("span.button").removeClass("clicked");
+    $("#play").hide();
+    $("#pause").show();
+
+    // track tds
+    $("td").removeClass("playing");
+    $(this).children("td").addClass("playing");
+    
+    // title, now playing text
+    var now_playing_text = $("td.playing.title").text() + " by " + $("td.playing.artist").text(); 
+    document.title = now_playing_text;
+    $("#now_playing").text(now_playing_text);
+    
+    // audio element
+    $("audio").attr("src", $(this).children(".path").first().text());
+    $("audio")[0].play();
+    
+    // slider
+    $("#slider").slider("option", {
+        // there was a weird bug here; setting max didn't work. Had to put it
+        // in the timer func, which is undesirable, but works.
+        value: 0,
+        min: 0,
+    });
+    sliderTimer = setTimeout(timer, 1000);
+}
+
+function timer() {
+    $("#slider").slider("option", "max", $("audio")[0].duration);
+    $("#slider").slider("option", "value", $("audio")[0].currentTime);
+    sliderTimer = setTimeout(timer, 1000);
+}
+
+function select() {
+    $("td").removeClass("selected");
+    $(this).children("td").addClass("selected");
+}
+
+function play_next() {
+    // track playing
+    if ( $("td.playing").length > 0 ) {
+        var next = $(".playing").parents("tr:first").next("tr");
+    }
+    // track selected
+    else if ( $("td.selected").length > 0 ) {
+        var next = $(".selected").parents("tr:first").next("tr");
+    }
+    // nothing playing or selected
+    else { var next = $("tr:first"); }
+    
+    $.proxy(play, next)();
+}
+
+function play_prev() {
+    // track playing
+    if ( $("td.playing").length > 0 ) {
+        var prev = $(".playing").parents("tr:first").prev("tr");
+    }
+    // track selected
+    else if ( $("td.selected").length > 0 ) {
+        var prev = $(".selected").parents("tr:first").prev("tr");
+    }
+    // nothing playing or selected
+    else { var prev = $("tr:last"); }
+
+    $.proxy(play, prev)();
+}
+
+// on load
+$(function() {
+    // track double click to play
+    $("table").delegate("tr.track", "dblclick", play);
+    
+    // track single click to play
+    $("table").delegate("tr.track", "click", select);
+    
+    // automatically move to next track XXX stop at end
+    $("audio")[0].addEventListener("ended", play_next);
+
+    // prev button
+    $("#prev").click(play_prev);
+    
+    // next button
+    $("#next").click(play_next);
+
+    // play button 
+    $("#play").click(function(e) {
+        // track selected
+        if ( $("td.selected").length > 0 ) {
+            var to_play = $(".selected").parents("tr:first");
+        }
+        // nothing selected
+        else {
+            var to_play = $("tr:first ~ tr:first");
+        }
+        $.proxy(play, to_play)();
+    });
+
+    // pause button
+    $("#pause").click(function(e) {
+        // paused
+        if ( $("#pause").hasClass("clicked") ) {
+            $("#pause").removeClass("clicked");
+            setTimeout(timer, 1000);
+            $("audio")[0].play();
+        }
+        // playing
+        else {
+            clearTimeout(sliderTimer);
+            $("#pause").addClass("clicked");
+            $("audio")[0].pause();
+        }
+    });
+
+    // stop button
+    $("#stop").click(function(e) {
+        clearTimeout(sliderTimer);
+        $("#slider").slider("option", "value", 0);
+        document.title = "musicd";
+        $("#now_playing").text("");
+        $("audio")[0].pause();
+        $("audio").attr("src", null);
+        $("span.button").removeClass("clicked");
+        $("td").removeClass("playing");
+        $("#play").show();
+        $("#pause").hide();
+    });
+
+    // progress bar
+    $("#slider").slider();
+
+    // jump to now playing
+    $("#now_playing").click(function(e) {
+        e.preventDefault();
+        var now_playing = $(".playing").parents("tr:first");
+        window.scrollTo(0, now_playing.offset().top - now_playing.height())
+    });
+
+    // hover for now playing link
+    $("#now_playing").mouseover(function() { $(this).addClass("hover"); });
+    $("#now_playing").mouseout(function() { $(this).removeClass("hover"); });
+
+    // filter XXX why isn't this working?
+    $("#search input").keypress(function(e) {
+        // hide every tr that doesn't have a td that matches current value
+        $("tr.track").filter(function (i) {
+            return
+                $(this).children("td").filter(function(i) {
+                    return $(this).text().indexOf($("#search input").attr("value")) === 0;
+                }).length === 0;
+        }).hide();
+    });
+});
+</script>
+<div id="dashboard">
+    <div id="controls">
+        <span id="prev"  class="button">prev</span>
+        <span id="play"  class="button">play</span>
+        <span id="pause" class="button" style="display:none">pause</span>
+        <span id="stop"  class="button">stop</span>
+        <span id="next"  class="button">next</span>
+    </div>
+    <a id="now_playing" href="#"></a>
+    <div  id="slider"></div>
+    <div id="search"><input type="text" /></div>
+</div>
+<table>
+    <tr>
+        <th>title</th>
+        <th>artist</th>
+        <th>album</th>
+        <th>length</th>
+    </tr>
+    {% for track in tracks %}
+    <tr class="track">
+        <td class="title">
+            {% if 'title' in track %}
+                {{track['title']}}
+            {% else %}
+                unknown
+            {%end%}
+        </td>
+        <td class="artist">
+            {% if 'artist' in track %}
+                {{track['artist']}}
+            {% else %}
+                unknown
+            {%end%}
+        </td>
+        <td class="album">
+            {% if 'album' in track %}
+                {{track['album']}}
+            {% else %}
+                unknown
+            {%end%}
+        </td>
+        <td class="length">
+            {% if 'length' in track %}
+                {{track['length']}}
+            {% else %}
+                unknown
+            {%end%}
+        </td>
+        <td class="path" style="display:none">
+            {{track['path']}}
+        </td>
+    </tr>
+    {% end %}
+</table>
+<audio></audio>
+</body>
+</html>
